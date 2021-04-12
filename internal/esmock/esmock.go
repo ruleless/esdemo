@@ -3,12 +3,11 @@ package mockdata
 import (
 	"context"
 	"encoding/json"
+	"esdemo/internal/esclient"
 	"fmt"
 	"io"
 	"log"
 	"strings"
-
-	"github.com/elastic/go-elasticsearch/v7"
 )
 
 // ImportTestData 导入测试数据到ES数据库中
@@ -32,11 +31,7 @@ func ImportTestData(ctx context.Context, indexName string, body io.Reader) error
 		} `json:"items"`
 	}
 
-	es, err := elasticsearch.NewDefaultClient()
-	if err != nil {
-		log.Fatalf("Error creating the client: %s", err)
-	}
-
+	es := esclient.GetClient()
 	res, err := es.Bulk(body,
 		es.Bulk.WithContext(ctx),
 		es.Bulk.WithIndex(indexName),
@@ -99,11 +94,7 @@ func ImportTestData(ctx context.Context, indexName string, body io.Reader) error
 
 // ClearTestData 删除测试数据
 func ClearTestData(ctx context.Context, indices ...string) error {
-	es, err := elasticsearch.NewDefaultClient()
-	if err != nil {
-		log.Fatalf("Error creating the client: %s", err)
-	}
-
+	es := esclient.GetClient()
 	res, err := es.Indices.Delete(indices, es.Indices.Delete.WithContext(ctx))
 	if err != nil {
 		log.Fatalf("Failed to delete test data: %s", err)
