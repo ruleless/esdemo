@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"strings"
 
 	"github.com/elastic/go-elasticsearch/v7"
 )
@@ -36,7 +37,7 @@ func ImportTestData(ctx context.Context, indexName string, body io.Reader) error
 		log.Fatalf("Error creating the client: %s", err)
 	}
 
-	res, err := es.Bulk(body, es.Bulk.WithIndex(indexName))
+	res, err := es.Bulk(body, es.Bulk.WithContext(ctx), es.Bulk.WithIndex(indexName))
 	if err != nil {
 		log.Fatalf("Failed to indexing test data: %s", err)
 		return err
@@ -88,10 +89,40 @@ func ImportTestData(ctx context.Context, indexName string, body io.Reader) error
 		return fmt.Errorf("%d documents indexed failed", numErrors)
 	}
 
-	log.Printf("total indexed %d documents", numIndexed)
+	log.Printf("total indexed %d documents in [%s]", numIndexed, indexName)
 	return nil
 }
 
-func ClearTestData(context.Context,  []string) {
-	
+// ClearTestData 删除测试数据
+func ClearTestData(ctx context.Context, indices ...string) error {
+	es, err := elasticsearch.NewDefaultClient()
+	if err != nil {
+		log.Fatalf("Error creating the client: %s", err)
+	}
+
+	res, err := es.Indices.Delete(indices, es.Indices.Delete.WithContext(ctx))
+	if err != nil {
+		log.Fatalf("Failed to delete test data: %s", err)
+		return err
+	}
+	defer res.Body.Close()
+
+	if res.IsError() {
+		var raw map[string]interface{}
+		if err := json.NewDecoder(res.Body).Decode(&raw); err != nil {
+			log.Fatalf("Failed to to parse response body: %s", err)
+			return err
+		}
+
+		reason := raw["error"].(map[string]interface{})["reason"]
+		log.Printf("  Error: [%d] %s: %s",
+			res.StatusCode,
+			raw["error"].(map[string]interface{})["type"],
+			reason,
+		)
+		return fmt.Errorf("Failed to delete test data: %s", reason)
+	}
+
+	log.Printf("Index: [%s] deleted", strings.Join(indices, ","))
+	return nil
 }
