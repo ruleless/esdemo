@@ -37,7 +37,11 @@ func ImportTestData(ctx context.Context, indexName string, body io.Reader) error
 		log.Fatalf("Error creating the client: %s", err)
 	}
 
-	res, err := es.Bulk(body, es.Bulk.WithContext(ctx), es.Bulk.WithIndex(indexName))
+	res, err := es.Bulk(body,
+		es.Bulk.WithContext(ctx),
+		es.Bulk.WithIndex(indexName),
+		es.Bulk.WithRefresh("true"),
+	)
 	if err != nil {
 		log.Fatalf("Failed to indexing test data: %s", err)
 		return err
